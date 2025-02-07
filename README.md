@@ -14,7 +14,7 @@ TOpPLUG HUNTER🕷🐼
 <img src="https://i.imgur.cOtwByV.jpeg" />
 </p>
 <p align="center">
-🐼🕷TOpPLUG🕷🐼 Hunter Multiscanner <a href="https://github.com/Hubdarkweb" target="_blank">TOpPLUG</a> using <a href="https://github.com/Hubdarkweb/TOpNetFraZer-ipv6_scanner." target="_blank">/TOpNetFraZer-ipv6_scanner</a> and <a href="https://www.python.org/" target="_blank">Python</a>. Don't forget to give a star, bro.
+🐼🕷TOpPLUG🕷🐼 Hunter Multiscanner <a href="https://github.com/Hubdarkweb" target="_blank">TOpPLUG</a> using <a href="https://github.com/Hubdarkweb/TOpNetFraZer-ipv6_scanner." target="_blank">/TOpNetFraZer-ipv6_scanner</a> and <a href="https://www.python.org/" target="_blank">Python</a>. Don't forget to upgrade 
 </p>
 <p align="center">
   <a href="https://git.io/typing-svg"><img src="https://readme-typing-svg.demolab.com?font=EB+Garamond&weight=800&size=28&duration=4000&pause=1000&random=false&width=435&lines=+_____🐼🕷TOpPLUG🕷🐼_____;HOST+UNLIMITED+x+HUNTER+FraZer;DEVELOPED+BY+🐼🕷TOpPLUG🕷🐼;REALESE+DATE+4%2F7%2F2025." alt="Typing SVG" /></a>
