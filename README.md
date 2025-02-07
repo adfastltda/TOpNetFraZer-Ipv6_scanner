@@ -7,11 +7,11 @@ TOpPLUG HUNTER🕷🐼
 </p>
 <h1 align="center">ꪶ🐼🕷TOpPLUG🕷🐼-Hunterꫂ<br></h1>
 <p align="center">
-<img src="https://i.imgur.com/or4X9rl.jpeg" />
+<img src="https://i.imgur.com/rl.jpeg" />
 </p>
 <h1 align="center">ꪶ🐼🕷TOpPLUG🕷🐼-Hunterꫂ<br></h1>
 <p align="center">
-<img src="https://i.imgur.com/nOtwByV.jpeg" />
+<img src="https://i.imgur.cOtwByV.jpeg" />
 </p>
 <p align="center">
 🐼🕷TOpPLUG🕷🐼 Hunter Multiscanner <a href="https://github.com/Hubdarkweb" target="_blank">TOpPLUG</a> using <a href="https://github.com/Hubdarkweb/TOpNetFraZer-ipv6_scanner." target="_blank">/TOpNetFraZer-ipv6_scanner</a> and <a href="https://www.python.org/" target="_blank">Python</a>. Don't forget to give a star, bro.
