@@ -42,7 +42,6 @@ Below is the **full IPv6-compatible scanner**, including all original modes:
 
 ### **Full IPv6 Scanner Script**
 
-```
 
 ---
 
