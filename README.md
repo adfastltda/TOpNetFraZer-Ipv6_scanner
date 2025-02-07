@@ -1,4 +1,27 @@
-Got it! Below is the **full IPv6-compatible scanner**, including all original modes:  
+TOpPLUG HUNTER🕷🐼
+   ## Hello 👋
+
+<h1 align="center">ꪶ🐼🕷TOpPLUG🕷🐼-Hunterꫂ<br></h1>
+<p align="center">
+<img src="https://i.imgur.com/Gw7jtD0.jpeg" />
+</p>
+<h1 align="center">ꪶ🐼🕷TOpPLUG🕷🐼-Hunterꫂ<br></h1>
+<p align="center">
+<img src="https://i.imgur.com/or4X9rl.jpeg" />
+</p>
+<h1 align="center">ꪶ🐼🕷TOpPLUG🕷🐼-Hunterꫂ<br></h1>
+<p align="center">
+<img src="https://i.imgur.com/nOtwByV.jpeg" />
+</p>
+<p align="center">
+🐼🕷TOpPLUG🕷🐼 Hunter Multiscanner <a href="https://github.com/Hubdarkweb" target="_blank">TOpPLUG</a> using <a href="https://github.com" target="_blank">TOpPLUG</a> and <a href="https://github.com/TOpNetFraZer-ipv6_scanner" target="_blank">python</a>. Dont forget to give a star bro.
+</p>
+<p align="center">
+  <a href="https://git.io/typing-svg"><img src="https://readme-typing-svg.demolab.com?font=EB+Garamond&weight=800&size=28&duration=4000&pause=1000&random=false&width=435&lines=+_____🐼🕷TOpPLUG🕷🐼_____;HOST+UNLIMITED+x+HUNTER+FraZer;DEVELOPED+BY+🐼🕷TOpPLUG🕷🐼;REALESE+DATE+4%2F7%2F2025." alt="Typing SVG" /></a>
+</p>
+# ```Hunter Info```
+
+Below is the **full IPv6-compatible scanner**, including all original modes:  
 
 ✅ **Direct HTTP Scanner** (`direct`)  
 ✅ **Proxy Scanner** (`proxy`)  
