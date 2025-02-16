@@ -6,6 +6,13 @@ import subprocess
 import socket
 import ssl
 import ipaddress
+import logging
+import shlex
+import socket
+import dns.resolver  # Importa a biblioteca dnspython
+
+# Configurar o logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class BugScanner(multithreading.MultiThreadRequest):
     def convert_host_port(self, host, port):
@@ -18,6 +25,22 @@ class BugScanner(multithreading.MultiThreadRequest):
         protocol = 'https' if port == '443' else 'http'
         return f'{protocol}://{self.convert_host_port(host, port)}' + (f'/{uri}' if uri is not None else '')
 
+    def resolve_hostname(self, host):
+        """Resolve hostname to IPv6 address."""
+        try:
+            answers = dns.resolver.resolve(host, 'AAAA')
+            for rdata in answers:
+                return str(rdata)
+        except dns.resolver.NXDOMAIN:
+            logging.warning(f"Hostname {host} not found.")
+            return None
+        except dns.resolver.NoAnswer:
+            logging.warning(f"No AAAA records found for {host}.")
+            return None
+        except Exception as e:
+            logging.error(f"Error resolving hostname {host}: {e}")
+            return None
+
 class DirectScanner(BugScanner):
     def task(self, payload):
         """Performs HTTP scanning."""
@@ -27,19 +50,26 @@ class DirectScanner(BugScanner):
 
         try:
             response = self.request(method, self.get_url(host, port), retry=1, timeout=3, allow_redirects=False)
-        except Exception:
+        except Exception as e:
+            logging.error(f"Error during HTTP request to {host}:{port} - {e}")
             return  # Ignore failures
 
         if response:
             self.task_success(payload)
+            logging.info(f"HTTP {method} request successful on {host}:{port} - Status: {response.status_code}")
 
 class ProxyScanner(DirectScanner):
     proxy = []
 
     def request(self, *args, **kwargs):
         """Use a proxy for requests."""
-        proxy = self.get_url(self.proxy[0], self.proxy[1])
-        return super().request(*args, proxies={'http': proxy, 'https': proxy}, **kwargs)
+        proxy_url = self.get_url(self.proxy[0], self.proxy[1])
+        proxies = {'http': proxy_url, 'https': proxy_url}
+        try:
+            return super().request(*args, proxies=proxies, **kwargs)
+        except Exception as e:
+            logging.error(f"Error using proxy {proxy_url}: {e}")
+            return None
 
 class SSLScanner(BugScanner):
     def task(self, payload):
@@ -49,10 +79,23 @@ class SSLScanner(BugScanner):
         try:
             sock = socket.create_connection((host, 443), timeout=5, family=socket.AF_INET6)
             context = ssl.create_default_context()
-            context.wrap_socket(sock, server_hostname=host)
+            ssl_sock = context.wrap_socket(sock, server_hostname=host)  # Wrap o socket normal em SSL
+            ssl_sock.do_handshake() # Inicia o handshake SSL/TLS
             self.task_success(payload)
-        except Exception:
-            pass  # Ignore failures
+            logging.info(f"SSL handshake successful on {host}:443")
+        except socket.timeout:
+            logging.warning(f"Timeout connecting to {host}:443")
+        except socket.gaierror as e:
+            logging.error(f"Error resolving hostname {host}: {e}")
+        except ssl.SSLError as e:
+            logging.debug(f"SSL error on {host}:443 - {e}")
+        except Exception as e:
+            logging.error(f"Unexpected error on {host}:443 - {e}", exc_info=True)
+        finally:
+            if 'ssl_sock' in locals() and ssl_sock: # Verifica se o socket SSL foi criado e existe
+                ssl_sock.close() # Encerra a conexão SSL
+            elif 'sock' in locals() and sock:
+                sock.close() # Se não, fecha o socket comum
 
 class PingScanner(BugScanner):
     def ping_host(self, host):
@@ -62,8 +105,22 @@ class PingScanner(BugScanner):
         command = [ping_cmd, param, '1', host]
 
         try:
-            return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0
-        except Exception:
+            # Usar shlex.quote para escapar os argumentos do comando
+            command = [shlex.quote(arg) for arg in command]
+            command_str = ' '.join(command)
+
+            result = subprocess.run(command_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            if result.returncode == 0:
+                return True
+            else:
+                logging.debug(f"Ping failed for {host}: {result.stderr}")
+                return False
+        except FileNotFoundError:
+            logging.error("Ping command not found. Ensure 'ping6' (or 'ping -6' on Windows) is installed and in your PATH.")
+            return False
+        except Exception as e:
+            logging.error(f"Error executing ping command for {host}: {e}")
             return False
 
     def task(self, payload):
@@ -71,6 +128,9 @@ class PingScanner(BugScanner):
         host = payload['host']
         if self.ping_host(host):
             self.task_success(payload)
+            logging.info(f"Ping successful for {host}")
+        else:
+             logging.debug(f"Ping failed for {host}")
 
 class UdpScanner(BugScanner):
     def scan_udp_port(self, host, port):
@@ -79,34 +139,52 @@ class UdpScanner(BugScanner):
             sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
             sock.settimeout(1)
             sock.sendto(b'', (host, int(port)))
-            sock.recvfrom(1024)
-            return True
-        except socket.timeout:
+            try:
+                sock.recvfrom(1024)
+                logging.info(f"UDP port {port} is open or unfiltered on {host}")  # Melhoria no log
+                return True
+            except socket.timeout:
+                 logging.debug(f"UDP port {port} timed out on {host}")
+                return False  # Timeout, pode estar filtrado ou não ter resposta
+            except socket.error as e:
+                logging.debug(f"UDP port {port} error on {host}: {e}")
+                return False  # Erro, provavelmente fechado
+        except socket.gaierror as e:  # Trata erros de resolução de nome
+             logging.error(f"Error resolving hostname {host}: {e}")
             return False
-        except socket.error:
+        except Exception as e:
+            logging.error(f"Error scanning UDP port {port} on {host}: {e}")
             return False
         finally:
             sock.close()
 
     def task(self, payload):
         """Run UDP scan on IPv6 host."""
-        if self.scan_udp_port(payload['host'], payload['port']):
+        host = payload['host']
+        port = payload['port']
+        if self.scan_udp_port(host, port):
             self.task_success(payload)
 
 class WebSocketScanner(BugScanner):
     def task(self, payload):
         """Check if WebSocket is open on an IPv6 host."""
         host = payload['host']
-        url = f"ws://[{host}]"
+        port = payload['port']  # Assume a porta padrão 80 se não especificada
 
         try:
-            ws = websocket.create_connection(url)
+            url = f"ws://[{host}]:{port}"  # Garante formatação correta para IPv6
+            ws = websocket.create_connection(url, timeout=5)  # Aumentar o timeout
             ws.send("ping")
-            ws.recv()
+            result = ws.recv() # Recebe a resposta
             self.task_success(payload)
+            logging.info(f"WebSocket connection successful on {host}:{port} - Received: {result}")
             ws.close()
-        except Exception:
-            pass  # Ignore failures
+        except websocket.WebSocketException as e:
+            logging.debug(f"WebSocket connection failed on {host}:{port} - {e}")
+        except socket.timeout:
+            logging.debug(f"WebSocket connection timed out on {host}:{port}")
+        except Exception as e:
+            logging.error(f"Error during WebSocket connection to {host}:{port} - {e}")
 
 def get_arguments():
     """Parses command-line arguments."""
@@ -119,7 +197,6 @@ def get_arguments():
     parser.add_argument('-P', '--proxy', default='', type=str, help='Proxy (host:port)')
     parser.add_argument('-T', '--threads', type=int, help='Number of threads')
     parser.add_argument('-o', '--output', type=str, help='Output file')
-
     return parser.parse_args(), parser
 
 def generate_ips_from_cidr(cidr):
@@ -130,7 +207,7 @@ def generate_ips_from_cidr(cidr):
         for ip in network.hosts():
             ip_list.append(str(ip))
     except ValueError as e:
-        print("Error:", e)
+        logging.error(f"Invalid CIDR: {e}")
     return ip_list
 
 def main():
@@ -139,16 +216,35 @@ def main():
 
     if not arguments.filename and not arguments.cdir:
         parser.print_help()
-        sys.exit()
+        sys.exit(1)
 
     method_list = arguments.method.split(',')
-    if arguments.filename:
-        host_list = open(arguments.filename).read().splitlines()
-    elif arguments.cdir:
-        ip_list = generate_ips_from_cidr(arguments.cdir)
-        host_list = [str(ip) for ip in ip_list]
+    host_list = []
 
-    port_list = arguments.port.split(',')
+    if arguments.filename:
+        try:
+            with open(arguments.filename, 'r') as file:
+                hosts = file.read().splitlines()
+                for host in hosts:
+                    if ':' not in host and '.' in host: # Parece ser um nome de domínio
+                        ipv6_address = BugScanner().resolve_hostname(host)
+                        if ipv6_address:
+                            host_list.append(ipv6_address)
+                        else:
+                            logging.warning(f"Could not resolve or ignoring hostname: {host}") # Usa o logger
+                    else:
+                        host_list.append(host)
+        except FileNotFoundError:
+            logging.error(f"File not found: {arguments.filename}")
+            sys.exit(1)
+        except Exception as e:
+            logging.error(f"Error reading file {arguments.filename}: {e}")
+            sys.exit(1)
+
+    elif arguments.cdir:
+        host_list = generate_ips_from_cidr(arguments.cdir)
+
+    port_list = [int(p) for p in arguments.port.split(',')] # Converte para inteiros
     proxy = arguments.proxy.split(':')
 
     # Select scanner mode
@@ -162,13 +258,15 @@ def main():
         scanner = WebSocketScanner()
     elif arguments.mode == 'proxy':
         if len(proxy) != 2:
-            sys.exit('--proxy requires host:port')
+            logging.error('--proxy requires host:port') # Use logging
+            sys.exit(1)
         scanner = ProxyScanner()
         scanner.proxy = proxy
     elif arguments.mode == 'udp':
         scanner = UdpScanner()
     else:
-        sys.exit('Mode not available!')
+        logging.error('Mode not available!')
+        sys.exit(1)
 
     # Configure scanner
     scanner.method_list = method_list
@@ -179,9 +277,13 @@ def main():
 
     # Save results if needed
     if arguments.output:
-        with open(arguments.output, 'w+') as file:
-            file.write('\n'.join([str(x) for x in scanner.success_list()]) + '\n')
+        try:
+            with open(arguments.output, 'w') as file:
+                for result in scanner.success_list():
+                    file.write(str(result) + '\n')
+            logging.info(f"Results saved to {arguments.output}")
+        except Exception as e:
+            logging.error(f"Error writing to output file {arguments.output}: {e}")
 
 if __name__ == '__main__':
     main()
-      
